@@ -28,10 +28,14 @@
 
 // since we'll be at version 0 by default, we should have a migration set for
 // it.
+
+var DEFAULT = "default";
 var DefaultMigration = { version: 0, up: function() {} };
 
 Migrations = {
-  _list: [DefaultMigration],
+  _channels : {
+    [DEFAULT] : DefaultMigration
+  },
   options: {
     // false disables logging
     log: true,
@@ -105,21 +109,29 @@ Meteor.startup(function() {
 //  down: function *optional
 //  name: String *optional
 // }
-Migrations.add = function(migration) {
-  if (typeof migration.up !== 'function')
+Migrations.add = function(migration, channel = DEFAULT ) {
+
+  if (typeof migration.up !== 'function') {
     throw new Meteor.Error('Migration must supply an up function.');
+  };
 
-  if (typeof migration.version !== 'number')
+  if (typeof migration.version !== 'number') {
     throw new Meteor.Error('Migration must supply a version number.');
+  }
 
-  if (migration.version <= 0)
+  if (migration.version <= 0) {
     throw new Meteor.Error('Migration version must be greater than 0');
+  }
 
   // Freeze the migration object to make it hereafter immutable
   Object.freeze(migration);
 
-  this._list.push(migration);
-  this._list = _.sortBy(this._list, function(m) {
+  if ( !this._channels[channel] ) {
+    this._channels[channel] = [];
+  };
+
+  this._channels[channel].push(migration);
+  this._channels[channel] = _.sortBy(this._channels[channel], function(m) {
     return m.version;
   });
 };
@@ -127,9 +139,15 @@ Migrations.add = function(migration) {
 // Attempts to run the migrations using command in the form of:
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
-Migrations.migrateTo = function(command) {
-  if (_.isUndefined(command) || command === '' || this._list.length === 0)
+Migrations.migrateTo = function(command, channel = DEFAULT) {
+
+  if ( !this._channels[channel]) {
+    throw new Error('Cannot migrate on unknow channel: ' + channel );
+  };
+
+  if (_.isUndefined(command) || command === '' || this._channels[channel].length === 0) {
     throw new Error('Cannot migrate using invalid command: ' + command);
+  };
 
   if (typeof command === 'number') {
     var version = command;
@@ -139,7 +157,7 @@ Migrations.migrateTo = function(command) {
   }
 
   if (version === 'latest') {
-    this._migrateTo(_.last(this._list).version);
+    this._migrateTo(_.last(this._channels[channel]).version, channel );
   } else {
     this._migrateTo(parseInt(version), subcommand === 'rerun');
   }
@@ -149,14 +167,14 @@ Migrations.migrateTo = function(command) {
 };
 
 // just returns the current version
-Migrations.getVersion = function() {
-  return this._getControl().version;
+Migrations.getVersion = function(channel = DEFAULT) {
+  return this._getControl(channel).version;
 };
 
 // migrates to the specific version passed in
-Migrations._migrateTo = function(version, rerun) {
+Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   var self = this;
-  var control = this._getControl(); // Side effect: upserts control document.
+  var control = this._getControl(channel); // Side effect: upserts control document.
   var currentVersion = control.version;
 
   if (lock() === false) {
@@ -166,7 +184,7 @@ Migrations._migrateTo = function(version, rerun) {
 
   if (rerun) {
     log.info('Rerunning version ' + version);
-    migrate('up', this._findIndexByVersion(version));
+    migrate('up', this._findIndexByVersion(version,channel));
     log.info('Finished migrating.');
     unlock();
     return;
@@ -180,20 +198,20 @@ Migrations._migrateTo = function(version, rerun) {
     return;
   }
 
-  var startIdx = this._findIndexByVersion(currentVersion);
-  var endIdx = this._findIndexByVersion(version);
+  var startIdx = this._findIndexByVersion(currentVersion,channel);
+  var endIdx = this._findIndexByVersion(version,channel);
 
   // log.info('startIdx:' + startIdx + ' endIdx:' + endIdx);
   log.info(
     'Migrating from version ' +
-      this._list[startIdx].version +
+      this._channels[channel][startIdx].version +
       ' -> ' +
-      this._list[endIdx].version,
+      this._channels[channel][endIdx].version,
   );
 
   // run the actual migration
-  function migrate(direction, idx) {
-    var migration = self._list[idx];
+  function migrate(direction, idx, channel = DEFAULT) {
+    var migration = self._channels[channel][idx];
 
     if (typeof migration[direction] !== 'function') {
       unlock();
@@ -224,7 +242,7 @@ Migrations._migrateTo = function(version, rerun) {
     // All other simultaneous callers will get false back from the update.
     return (
       self._collection.update(
-        { _id: 'control', locked: false },
+        { _id: 'control_' + channel, locked: false },
         { $set: { locked: true, lockedAt: new Date() } },
       ) === 1
     );
@@ -232,18 +250,18 @@ Migrations._migrateTo = function(version, rerun) {
 
   // Side effect: saves version.
   function unlock() {
-    self._setControl({ locked: false, version: currentVersion });
+    self._setControl({ locked: false, version: currentVersion, channel: channel });
   }
 
   if (currentVersion < version) {
     for (var i = startIdx; i < endIdx; i++) {
-      migrate('up', i + 1);
-      currentVersion = self._list[i + 1].version;
+      migrate('up', i + 1, channel);
+      currentVersion = self._channels[channel][i + 1].version;
     }
   } else {
     for (var i = startIdx; i > endIdx; i--) {
-      migrate('down', i);
-      currentVersion = self._list[i - 1].version;
+      migrate('down', i, channel);
+      currentVersion = self._channels[channel][i - 1].version;
     }
   }
 
@@ -252,10 +270,10 @@ Migrations._migrateTo = function(version, rerun) {
 };
 
 // gets the current control record, optionally creating it if non-existant
-Migrations._getControl = function() {
-  var control = this._collection.findOne({ _id: 'control' });
+Migrations._getControl = function(channel = DEFAULT ) {
+  var control = this._collection.findOne({ _id: 'control_' + channel });
 
-  return control || this._setControl({ version: 0, locked: false });
+  return control || this._setControl({ version: 0, locked: false, channel: channel });
 };
 
 // sets the control record
@@ -264,19 +282,23 @@ Migrations._setControl = function(control) {
   check(control.version, Number);
   check(control.locked, Boolean);
 
+  if ( !this._collection.findOne('control_' + control.channel)) {
+    throw new Error('Cannot set control on not existing channel: ', channel);
+  };
+
   this._collection.update(
-    { _id: 'control' },
+    { _id: 'control_' + channel },
     { $set: { version: control.version, locked: control.locked } },
     { upsert: true },
-  );
+   );
 
   return control;
 };
 
-// returns the migration index in _list or throws if not found
-Migrations._findIndexByVersion = function(version) {
-  for (var i = 0; i < this._list.length; i++) {
-    if (this._list[i].version === version) return i;
+// returns the migration index in channel list or throws if not found
+Migrations._findIndexByVersion = function(version, channel = DEFAULT) {
+  for (var i = 0; i < this._channels[channel].length; i++) {
+    if (this._channels[channel][i].version === version) return i;
   }
 
   throw new Meteor.Error("Can't find migration version " + version);
@@ -284,11 +306,13 @@ Migrations._findIndexByVersion = function(version) {
 
 //reset (mainly intended for tests)
 Migrations._reset = function() {
-  this._list = [{ version: 0, up: function() {} }];
+  this._channels = {
+    [DEFAULT] : [{ version: 0, up: function() {} }],
+  };
   this._collection.remove({});
 };
 
 // unlock control
-Migrations.unlock = function() {
-  this._collection.update({ _id: 'control' }, { $set: { locked: false } });
+Migrations.unlock = function(channel = DEFAULT ) {
+  this._collection.update({ _id: 'control_' + channel }, { $set: { locked: false } });
 };
