@@ -34,7 +34,7 @@ var DefaultMigration = { version: 0, up: function() {} };
 
 Migrations = {
   _channels : {
-    [DEFAULT] : DefaultMigration
+    [DEFAULT] : [DefaultMigration],
   },
   options: {
     // false disables logging
@@ -129,7 +129,7 @@ Migrations.add = function(migration, channel = DEFAULT ) {
   if ( !this._channels[channel] ) {
     this._channels[channel] = [];
   };
-
+  console.log("this ", this._channels, channel);
   this._channels[channel].push(migration);
   this._channels[channel] = _.sortBy(this._channels[channel], function(m) {
     return m.version;
@@ -140,7 +140,7 @@ Migrations.add = function(migration, channel = DEFAULT ) {
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
-
+  console.log("command", command, channel);
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
@@ -157,7 +157,7 @@ Migrations.migrateTo = function(command, channel = DEFAULT) {
   }
 
   if (version === 'latest') {
-    this._migrateTo(_.last(this._channels[channel]).version, channel );
+    this._migrateTo(_.last(this._channels[channel]).version, false, channel );
   } else {
     this._migrateTo(parseInt(version), subcommand === 'rerun');
   }
@@ -173,50 +173,53 @@ Migrations.getVersion = function(channel = DEFAULT) {
 
 // migrates to the specific version passed in
 Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
+  console.log("wtf");
   var self = this;
   var control = this._getControl(channel); // Side effect: upserts control document.
   var currentVersion = control.version;
 
-  if (lock() === false) {
+  if (lock(channel) === false) {
     log.info('Not migrating, control is locked.');
     return;
   }
 
   if (rerun) {
+    console.log("rerun", rerun);
     log.info('Rerunning version ' + version);
     migrate('up', this._findIndexByVersion(version,channel));
     log.info('Finished migrating.');
-    unlock();
+    unlock(channel);
     return;
   }
-
+  console.log("versions", currentVersion, version);
   if (currentVersion === version) {
     if (Migrations.options.logIfLatest) {
       log.info('Not migrating, already at version ' + version);
     }
-    unlock();
+    unlock(channel);
     return;
   }
 
   var startIdx = this._findIndexByVersion(currentVersion,channel);
   var endIdx = this._findIndexByVersion(version,channel);
-
+  console.log("startIdx", startIdx);
+  console.log("endIdxs",endIdx);
   // log.info('startIdx:' + startIdx + ' endIdx:' + endIdx);
   log.info(
     'Migrating from version ' +
       this._channels[channel][startIdx].version +
       ' -> ' +
-      this._channels[channel][endIdx].version,
-  );
+      this._channels[channel][endIdx].version
+    );
 
   // run the actual migration
   function migrate(direction, idx, channel = DEFAULT) {
     var migration = self._channels[channel][idx];
 
     if (typeof migration[direction] !== 'function') {
-      unlock();
+      unlock(channel);
       throw new Meteor.Error(
-        'Cannot migrate ' + direction + ' on version ' + migration.version,
+        'Cannot migrate ' + direction + ' on version ' + migration.version
       );
     }
 
@@ -229,27 +232,27 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
         direction +
         '() on version ' +
         migration.version +
-        maybeName(),
+        maybeName()
     );
 
     migration[direction](migration);
   }
 
   // Returns true if lock was acquired.
-  function lock() {
+  function lock(channel) {
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
     return (
       self._collection.update(
         { _id: 'control_' + channel, locked: false },
-        { $set: { locked: true, lockedAt: new Date() } },
+        { $set: { locked: true, lockedAt: new Date() } }
       ) === 1
     );
   }
 
   // Side effect: saves version.
-  function unlock() {
+  function unlock(channel) {
     self._setControl({ locked: false, version: currentVersion, channel: channel });
   }
 
@@ -265,7 +268,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
     }
   }
 
-  unlock();
+  unlock(channel);
   log.info('Finished migrating.');
 };
 
@@ -282,14 +285,10 @@ Migrations._setControl = function(control) {
   check(control.version, Number);
   check(control.locked, Boolean);
 
-  if ( !this._collection.findOne('control_' + control.channel)) {
-    throw new Error('Cannot set control on not existing channel: ', channel);
-  };
-
   this._collection.update(
-    { _id: 'control_' + channel },
+    { _id: 'control_' + control.channel },
     { $set: { version: control.version, locked: control.locked } },
-    { upsert: true },
+    { upsert: true }
    );
 
   return control;
