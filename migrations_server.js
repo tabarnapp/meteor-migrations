@@ -129,7 +129,6 @@ Migrations.add = function(migration, channel = DEFAULT ) {
   if ( !this._channels[channel] ) {
     this._channels[channel] = [];
   };
-  console.log("this ", this._channels, channel);
   this._channels[channel].push(migration);
   this._channels[channel] = _.sortBy(this._channels[channel], function(m) {
     return m.version;
@@ -140,7 +139,6 @@ Migrations.add = function(migration, channel = DEFAULT ) {
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
-  console.log("command", command, channel);
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
@@ -173,7 +171,6 @@ Migrations.getVersion = function(channel = DEFAULT) {
 
 // migrates to the specific version passed in
 Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
-  console.log("wtf");
   var self = this;
   var control = this._getControl(channel); // Side effect: upserts control document.
   var currentVersion = control.version;
@@ -184,14 +181,12 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   }
 
   if (rerun) {
-    console.log("rerun", rerun);
     log.info('Rerunning version ' + version);
     migrate('up', this._findIndexByVersion(version,channel));
     log.info('Finished migrating.');
     unlock(channel);
     return;
   }
-  console.log("versions", currentVersion, version);
   if (currentVersion === version) {
     if (Migrations.options.logIfLatest) {
       log.info('Not migrating, already at version ' + version);
@@ -202,8 +197,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
 
   var startIdx = this._findIndexByVersion(currentVersion,channel);
   var endIdx = this._findIndexByVersion(version,channel);
-  console.log("startIdx", startIdx);
-  console.log("endIdxs",endIdx);
+
   // log.info('startIdx:' + startIdx + ' endIdx:' + endIdx);
   log.info(
     'Migrating from version ' +
