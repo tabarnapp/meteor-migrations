@@ -127,7 +127,7 @@ Migrations.add = function(migration, channel = DEFAULT ) {
   Object.freeze(migration);
 
   if ( !this._channels[channel] ) {
-    this._channels[channel] = [];
+    this._channels[channel] = [ DefaultMigration ];
   };
   this._channels[channel].push(migration);
   this._channels[channel] = _.sortBy(this._channels[channel], function(m) {
