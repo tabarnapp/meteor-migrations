@@ -34,7 +34,7 @@ var DefaultMigration = { version: 0, up: function() {} };
 
 Migrations = {
   _channels : {
-    [DEFAULT] : [DefaultMigration],
+    [DEFAULT] : [ DefaultMigration ],
   },
   options: {
     // false disables logging
@@ -96,11 +96,13 @@ Meteor.startup(function() {
 
   log = createLogger('Migrations');
 
-  ['info', 'warn', 'error', 'debug'].forEach(function(level) {
+  [ 'info', 'warn', 'error', 'debug' ].forEach(function(level) {
     log[level] = _.partial(log, level);
   });
 
-  if (process.env.MIGRATE) Migrations.migrateTo(process.env.MIGRATE);
+  if (process.env.MIGRATE)  {
+    Migrations.migrateTo(process.env.MIGRATE);
+  }
 });
 
 // Add a new migration:
@@ -207,7 +209,8 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
     );
 
   // run the actual migration
-  function migrate(direction, idx, channel = DEFAULT) {
+  function migrate(direction, idx) {
+
     var migration = self._channels[channel][idx];
 
     if (typeof migration[direction] !== 'function') {
@@ -233,7 +236,8 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   }
 
   // Returns true if lock was acquired.
-  function lock(channel) {
+  function lock() {
+    log.debug('Locking channel' + channel);
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
@@ -246,17 +250,17 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   }
 
   // Side effect: saves version.
-  function unlock(channel) {
+  function unlock() {
     self._setControl({ locked: false, version: currentVersion, channel: channel });
   }
 
   if (currentVersion < version) {
-    for (var i = startIdx; i < endIdx; i++) {
+    for (var i = startIdx; i < endIdx; i += 1) {
       migrate('up', i + 1, channel);
       currentVersion = self._channels[channel][i + 1].version;
     }
   } else {
-    for (var i = startIdx; i > endIdx; i--) {
+    for (var i = startIdx; i > endIdx; i-=1) {
       migrate('down', i, channel);
       currentVersion = self._channels[channel][i - 1].version;
     }
