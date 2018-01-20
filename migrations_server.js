@@ -157,6 +157,7 @@ Migrations.migrateTo = function(command, channel = DEFAULT) {
   }
 
   if (version === 'latest') {
+    log.info('Migrating to latest',this._channels[channel],_.last(this._channels[channel]).version)
     this._migrateTo(_.last(this._channels[channel]).version, false, channel );
   } else {
     this._migrateTo(parseInt(version), subcommand === 'rerun');
@@ -173,6 +174,7 @@ Migrations.getVersion = function(channel = DEFAULT) {
 
 // migrates to the specific version passed in
 Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
+  log.info("Migrating to", version,channel);
   var self = this;
   var control = this._getControl(channel); // Side effect: upserts control document.
   var currentVersion = control.version;
@@ -191,7 +193,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   }
   if (currentVersion === version) {
     if (Migrations.options.logIfLatest) {
-      log.info('Not migrating, already at version ' + version);
+      log.info('Not migrating, ' + channel + ' already at version ' + version);
     }
     unlock(channel);
     return;
