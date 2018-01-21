@@ -94,12 +94,15 @@ Meteor.startup(function() {
   // collection holding the control record
   Migrations._collection = new Mongo.Collection(options.collectionName);
 
+  Migrations._collection.find({}).fetch().forEach( (e) => {
+    console.log("e",e._id, e.locked); 
+  });
   log = createLogger('Migrations');
 
   [ 'info', 'warn', 'error', 'debug' ].forEach(function(level) {
     log[level] = _.partial(log, level);
   });
-
+  console.log("process", process.env.MIGRATE); 
   if (process.env.MIGRATE)  {
     Migrations.migrateTo(process.env.MIGRATE);
   }
