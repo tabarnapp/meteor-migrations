@@ -93,7 +93,6 @@ Meteor.startup(function() {
 
   // collection holding the control record
   Migrations._collection = new Mongo.Collection(options.collectionName);
-
   Migrations._collection.find({}).fetch().forEach( (e) => {
     console.log("e",e._id, e.locked); 
   });
@@ -144,6 +143,8 @@ Migrations.add = function(migration, channel = DEFAULT ) {
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
+  console.log("Dont migrate anything temporary");
+  return; 
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
