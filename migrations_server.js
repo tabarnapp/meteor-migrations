@@ -157,7 +157,7 @@ Migrations.migrateTo = function(command, channel = DEFAULT) {
   }
 
   if (version === 'latest') {
-    log.info(`Migrating to latest \n with :  ${this._channels[channel]} \n and : ${_.last(this._channels[channel]).version})
+    log.info(`Migrating to latest \n with :  ${this._channels[channel]} \n and : ${_.last(this._channels[channel]).version}`)
     this._migrateTo(_.last(this._channels[channel]).version, false, channel );
   } else {
     this._migrateTo(parseInt(version), subcommand === 'rerun');
