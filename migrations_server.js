@@ -243,6 +243,11 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
+    
+    self._collection.find({locked : false}).fetch().forEach( (e) => {
+      console.log("e",e._id, e.locked); 
+    });
+
     return (
       self._collection.update(
         { _id: 'control_' + channel, locked: false },
