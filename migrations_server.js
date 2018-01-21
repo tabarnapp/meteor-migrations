@@ -239,7 +239,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
 
   // Returns true if lock was acquired.
   function lock() {
-    log.debug('Locking channel' + channel);
+    log.info('Locking channel' + channel);
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
@@ -282,6 +282,7 @@ Migrations._getControl = function(channel = DEFAULT ) {
 // sets the control record
 Migrations._setControl = function(control) {
   // be quite strict
+  log.info('setting control' + control.channel + control.locked); 
   check(control.version, Number);
   check(control.locked, Boolean);
 
