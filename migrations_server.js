@@ -140,41 +140,42 @@ Migrations.add = function(migration, channel = DEFAULT ) {
   });
 };
 
-Migrations.migrateTo = function(command, channel = DEFAULT){
-  console.log("Im only logger ", command," ", channel); 
-}; 
+// Migrations.migrateTo = function(command, channel = DEFAULT){
+//   console.log("Im only logger ", command," ", channel); 
+// }; 
 
 // Attempts to run the migrations using command in the form of:
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
-// Migrations.migrateTo = function(command, channel = DEFAULT) {
-//   console.log("Dont migrate anything temporary");
-//   return; 
-//   if ( !this._channels[channel]) {
-//     throw new Error('Cannot migrate on unknow channel: ' + channel );
-//   };
+Migrations.migrateTo = function(command, channel = DEFAULT) {
+  console.log("Dont migrate anything temporary");
+  return; 
+  console.log("After return"); 
+  if ( !this._channels[channel]) {
+    throw new Error('Cannot migrate on unknow channel: ' + channel );
+  };
 
-//   if (_.isUndefined(command) || command === '' || this._channels[channel].length === 0) {
-//     throw new Error('Cannot migrate using invalid command: ' + command);
-//   };
+  if (_.isUndefined(command) || command === '' || this._channels[channel].length === 0) {
+    throw new Error('Cannot migrate using invalid command: ' + command);
+  };
 
-//   if (typeof command === 'number') {
-//     var version = command;
-//   } else {
-//     var version = command.split(',')[0]; //.trim();
-//     var subcommand = command.split(',')[1]; //.trim();
-//   }
+  if (typeof command === 'number') {
+    var version = command;
+  } else {
+    var version = command.split(',')[0]; //.trim();
+    var subcommand = command.split(',')[1]; //.trim();
+  }
 
-//   if (version === 'latest') {
-//     log.info(`Migrating to latest \n with :  ${this._channels[channel]} \n and : ${_.last(this._channels[channel]).version}`)
-//     this._migrateTo(_.last(this._channels[channel]).version, false, channel );
-//   } else {
-//     this._migrateTo(parseInt(version), subcommand === 'rerun');
-//   }
+  if (version === 'latest') {
+    log.info(`Migrating to latest \n with :  ${this._channels[channel]} \n and : ${_.last(this._channels[channel]).version}`)
+    this._migrateTo(_.last(this._channels[channel]).version, false, channel );
+  } else {
+    this._migrateTo(parseInt(version), subcommand === 'rerun');
+  }
 
-//   // remember to run meteor with --once otherwise it will restart
-//   if (subcommand === 'exit') process.exit(0);
-// };
+  // remember to run meteor with --once otherwise it will restart
+  if (subcommand === 'exit') process.exit(0);
+};
 
 // just returns the current version
 Migrations.getVersion = function(channel = DEFAULT) {
