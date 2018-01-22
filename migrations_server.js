@@ -101,7 +101,7 @@ Meteor.startup(function() {
 
   [ 'info', 'warn', 'error', 'debug' ].forEach(function(level) {
     log[level] = _.partial(log, level);
-  });
+  }); 
   console.log("process", process.env.MIGRATE); 
   if (process.env.MIGRATE)  {
     Migrations.migrateTo(process.env.MIGRATE);
@@ -149,8 +149,7 @@ Migrations.add = function(migration, channel = DEFAULT ) {
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
   console.log("Dont migrate anything temporary");
-  return; 
-  console.log("After return"); 
+
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
