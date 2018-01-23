@@ -93,16 +93,12 @@ Meteor.startup(function() {
 
   // collection holding the control record
   Migrations._collection = new Mongo.Collection(options.collectionName);
-  
-  Migrations._collection.find({}).fetch().forEach( (e) => {
-    console.log("e",e._id, e.locked); 
-  });
+
   log = createLogger('Migrations');
 
   [ 'info', 'warn', 'error', 'debug' ].forEach(function(level) {
     log[level] = _.partial(log, level);
   }); 
-  console.log("process", process.env.MIGRATE); 
   if (process.env.MIGRATE)  {
     Migrations.migrateTo(process.env.MIGRATE);
   }
@@ -140,16 +136,11 @@ Migrations.add = function(migration, channel = DEFAULT ) {
   });
 };
 
-// Migrations.migrateTo = function(command, channel = DEFAULT){
-//   console.log("Im only logger ", command," ", channel); 
-// }; 
-
 // Attempts to run the migrations using command in the form of:
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
-  console.log("Dont migrate anything temporary");
-
+  
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
@@ -252,10 +243,6 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
-    
-    self._collection.find({locked : false}).fetch().forEach( (e) => {
-      console.log("e",e._id, e.locked); 
-    });
 
     return (
       self._collection.update(
