@@ -243,12 +243,13 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
-
+    const update = self._collection.update(
+      { _id: 'control_' + channel, locked: false },
+      { $set: { locked: true, lockedAt: new Date() } }
+    ); 
+    log.info('update',update); 
     return (
-      self._collection.update(
-        { _id: 'control_' + channel, locked: false },
-        { $set: { locked: true, lockedAt: new Date() } }
-      ) === 1
+      update === 1
     );
   }
 
