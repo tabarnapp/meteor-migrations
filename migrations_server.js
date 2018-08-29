@@ -153,17 +153,17 @@ Migrations.migrateTo = function(command, channel = DEFAULT) {
     var version = command;
   } else {
     var version = command.split(',')[0]; //.trim();
-    var subcommand = command.split(',')[1]; //.trim();
   }
+
 
   if (version === 'latest') {
     this._migrateTo(_.last(this._channels[channel]).version, false, channel );
   } else {
-    this._migrateTo(parseInt(version), subcommand === 'rerun');
+    var subcommand = command.split(',')[1]; //.trim();
+    this._migrateTo(parseInt(version), subcommand === 'rerun',channel);
+    if (subcommand === 'exit') process.exit(0);
   }
 
-  // remember to run meteor with --once otherwise it will restart
-  if (subcommand === 'exit') process.exit(0);
 };
 
 // just returns the current version
@@ -178,7 +178,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   var currentVersion = control.version;
 
   if (lock(channel) === false) {
-    log.info('Not migrating, control is locked.');
+    log.info(`[${channel}] Not migrating, control is locked.`);
     return;
   }
 
@@ -191,7 +191,7 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
   }
   if (currentVersion === version) {
     if (Migrations.options.logIfLatest) {
-      log.info('Not migrating, already at version ' + version);
+      log.info(`[${channel}] Not migrating, already at version ${version}`);
     }
     unlock(channel);
     return;
