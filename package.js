@@ -16,5 +16,5 @@ Package.on_use(function(api) {
 Package.on_test(function(api) {
   api.use('ecmascript');
   api.use([ 'tabarnapp:migrations', 'tinytest' ]);
-  api.addFiles('migrations_tests.js', [ 'server' ]);
+  // api.addFiles('migrations_tests.js', [ 'server' ]);
 });

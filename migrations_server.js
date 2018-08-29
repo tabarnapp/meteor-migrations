@@ -98,8 +98,7 @@ Meteor.startup(function() {
 
   [ 'info', 'warn', 'error', 'debug' ].forEach(function(level) {
     log[level] = _.partial(log, level);
-  });
-
+  }); 
   if (process.env.MIGRATE)  {
     Migrations.migrateTo(process.env.MIGRATE);
   }
@@ -141,6 +140,7 @@ Migrations.add = function(migration, channel = DEFAULT ) {
 // e.g 'latest', 'latest,exit', 2
 // use 'XX,rerun' to re-run the migration at that version
 Migrations.migrateTo = function(command, channel = DEFAULT) {
+  
   if ( !this._channels[channel]) {
     throw new Error('Cannot migrate on unknow channel: ' + channel );
   };
@@ -157,6 +157,7 @@ Migrations.migrateTo = function(command, channel = DEFAULT) {
 
 
   if (version === 'latest') {
+    log.info(`Migrating to latest \n with :  ${this._channels[channel]} \n and : ${_.last(this._channels[channel]).version}`)
     this._migrateTo(_.last(this._channels[channel]).version, false, channel );
   } else {
     var subcommand = command.split(',')[1]; //.trim();
@@ -173,6 +174,7 @@ Migrations.getVersion = function(channel = DEFAULT) {
 
 // migrates to the specific version passed in
 Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
+  log.info(`Migrating to ${version} ${channel}` );
   var self = this;
   var control = this._getControl(channel); // Side effect: upserts control document.
   var currentVersion = control.version;
@@ -237,15 +239,17 @@ Migrations._migrateTo = function(version, rerun, channel = DEFAULT) {
 
   // Returns true if lock was acquired.
   function lock() {
-    log.debug('Locking channel' + channel);
+    log.info('Locking channel' + channel);
     // This is atomic. The selector ensures only one caller at a time will see
     // the unlocked control, and locking occurs in the same update's modifier.
     // All other simultaneous callers will get false back from the update.
+    const update = self._collection.update(
+      { _id: 'control_' + channel, locked: false },
+      { $set: { locked: true, lockedAt: new Date() } }
+    ); 
+    log.info('update',update); 
     return (
-      self._collection.update(
-        { _id: 'control_' + channel, locked: false },
-        { $set: { locked: true, lockedAt: new Date() } }
-      ) === 1
+      update === 1
     );
   }
 
@@ -280,6 +284,7 @@ Migrations._getControl = function(channel = DEFAULT ) {
 // sets the control record
 Migrations._setControl = function(control) {
   // be quite strict
+  log.info('setting control' + control.channel + control.locked); 
   check(control.version, Number);
   check(control.locked, Boolean);
 
